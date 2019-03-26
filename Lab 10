@@ -1,13 +1,14 @@
 /*====================================================*/
 /* Victor P. Nelson */
-/* ELEC 3040/3050 - Lab 1, Program 1 */
+/* ELEC 3040/3050 - Lab 10, Program 1 */
 /* Toggle LED1 while button pressed, with short delay inserted */
 /*====================================================*/
 #include "STM32L1xx.h" /* Microcontroller information */
 #include <math.h>
 /* Define global variables */
+#define VREF 3;
 static uint8_t row = 0, col = 0, key = 0, second = 0;
-static uint16_t interval = 0, count = 0;
+static uint16_t interval = 0, count = 0, voltage = 0;
 static float dutyCycle = 0;
 static const uint16_t keyArray[4][4] = { //this is for assigning the keypresses (row and column pair) to their appropriate outputs
   {1,2,3,0xA},
@@ -92,10 +93,10 @@ void PinSetup () {
   ADC1->SQR5 &= ~ADC1->SQR5_L; //CLEAR SQ1 bits
   ADC1->SQR5 |= 0x00000003; //SQ1 = 3 for ADC_IN3 //select channel 3 for PA3 input
   ADC1->CR2 |= 1; //power on ADC1
+  ADC1->CR2 |= 0x400; //set EOC at the end of each conversion
   ADC1->SMPR3 &= ~ADC_SMPR3_SMP3; //clear SMP3 sample time
   ADC1->SMPR3 |= 0x00000000; //SMP3 = 00; so 4 cycles (min sample time for resolution of 12)
 
-  ADC1->CR2 |= 0x40000000; //to start conversion. Change 4 to 0 to initialize.(software trigger)
 
   //***extra***//
   /*step 1: connect channel TIM11->CH1 //pin pa7
@@ -115,9 +116,16 @@ void PinSetup () {
   __enable_irq(); //enable CPU interrupts
 }
 
+void ADC1_IRQHandler() {
+  //Wait for end of conversion (EOC=1)
+  while ((ADC1->SR & 0x02) == 0);
+  //read DR. DR = Vin/Vref * 2^#bits
+  voltage = (ADC1->DR) * VREF/(1 << 12);
+  ADC1->SR &= ~(0x02); //then clear ADC1->SR
+
+}
+
 void TIM10_IRQHandler() {
-
-
   //clear UIFlag and capture/compare interrupt flag
   TIM10->SR &= ~(0x02);
 	//TIM10->SR |= 0x00;
@@ -232,5 +240,6 @@ int main(void) {
   /* Endless loop */
   while (1) { //Can also use: for(;;)
   //wait for interrupt
+  ADC1->CR2 |= 0x40000000; //to start conversion. Change 4 to 0 to initialize.(software trigger)
   }
 } /* repeat forever */
