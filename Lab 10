@@ -6,9 +6,9 @@
 #include "STM32L1xx.h" /* Microcontroller information */
 #include <math.h>
 /* Define global variables */
-#define VREF 3;
+//#define VREF 3;
 static uint8_t row = 0, col = 0, key = 0, second = 0;
-static uint16_t interval = 0, count = 0, voltage = 0;
+static uint16_t interval = 0, count = 0, voltage = 0,vref = 0;
 static float dutyCycle = 0;
 static const uint16_t keyArray[4][4] = { //this is for assigning the keypresses (row and column pair) to their appropriate outputs
   {1,2,3,0xA},
@@ -88,9 +88,9 @@ void PinSetup () {
   TIM11->CR1 |= 0x01; //Enable CCR counter
 
   //ADC STUFF
-  RCC->APB2ENR |= RCC_APB2ENR_APB2ENR; //enable ADC clock ********MAY NOT WORK
+  RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //enable ADC clock ********MAY NOT WORK
   ADC1->CR1 |= 0x020; //Change last 2 to 1 to disable ADC interrupts when EOC sets. Change bits 25 and 24 to change resolution
-  ADC1->SQR5 &= ~ADC1->SQR5_L; //CLEAR SQ1 bits
+  ADC1->SQR5 &= ~ADC_SQR5_SQ1; //CLEAR SQ1 bits
   ADC1->SQR5 |= 0x00000003; //SQ1 = 3 for ADC_IN3 //select channel 3 for PA3 input
   ADC1->CR2 |= 1; //power on ADC1
   ADC1->CR2 |= 0x400; //set EOC at the end of each conversion
@@ -120,7 +120,7 @@ void ADC1_IRQHandler() {
   //Wait for end of conversion (EOC=1)
   while ((ADC1->SR & 0x02) == 0);
   //read DR. DR = Vin/Vref * 2^#bits
-  voltage = (ADC1->DR) * VREF/(1 << 12);
+  voltage = (ADC1->DR) * (vref/(1<<12));
   ADC1->SR &= ~(0x02); //then clear ADC1->SR
 
 }
